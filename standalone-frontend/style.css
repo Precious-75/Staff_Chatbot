@@ -12,8 +12,8 @@ body {
 }
 
 *, html {
-    --primaryGradient: linear-gradient(93.12deg, #581B98 0.52%, #9C1DE7 100%);
-    --secondaryGradient: linear-gradient(268.91deg, #581B98 -2.14%, #9C1DE7 99.69%);
+    --primaryGradient: linear-gradient(93.12deg, #d39bbe 0.52%, #0b0110 100%);
+    --secondaryGradient: linear-gradient(268.91deg, #05000a -2.14%, #9C1DE7 99.69%);
     --primaryBoxShadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
     --secondaryBoxShadow: 0px -10px 15px rgba(0, 0, 0, 0.1);
     --primary: #581B98;
@@ -74,22 +74,41 @@ body {
     display: flex;
     overflow-y: scroll;
     flex-direction: column-reverse;
+    padding: 0 20px;
 }
 
+/* Replace your message positioning styles with these: */
+
 .messages__item {
-    background: orange;
-    max-width: 60.6%;
+    margin-top: 10px;
+    padding: 8px 12px;
+    max-width: 70%;
     width: fit-content;
 }
 
+/* Chatbot messages - LEFT side (Sam uses --visitor class) */
+.messages__item--visitor,
+.messages__item--typing {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+    background: #E0E0E0; /* Gray for chatbot */
+    color: black;
+    margin-right: auto;  /* This pushes it to the LEFT */
+    margin-left: 0;
+    float: left;
+}
+
 .messages__item--operator {
-    margin-left: auto;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 20px;
+    background: var(--primary); /* Purple for user */
+    color: white;
+    margin-left: auto;   /* This pushes it to the RIGHT */
+    margin-right: 0;
+    float: right;
 }
-
-.messages__item--visitor {
-    margin-right: auto;
-}
-
 /* FOOTER */
 .chatbox__footer {
     position: sticky;

@@ -56,7 +56,7 @@ class Chatbox {
           })
           .then(r => r.json())
           .then(r => {
-            let msg2 = { name: "Sam", message: r.answer };
+            let msg2 = { name: "Support Desk", message: r.answer };
             this.messages.push(msg2);
             this.updateChatText(chatbox)
             textField.value = ''
@@ -68,22 +68,22 @@ class Chatbox {
           });
     }
 
-    updateChatText(chatbox) {
-        var html = '';
-        this.messages.slice().reverse().forEach(function(item, index) {
-            if (item.name === "Sam")
-            {
-                html += '<div class="messages__item messages__item--visitor">' + item.message + '</div>'
-            }
-            else
-            {
-                html += '<div class="messages__item messages__item--operator">' + item.message + '</div>'
-            }
-          });
+updateChatText(chatbox) {
+    var html = '';
+    this.messages.slice().reverse().forEach(function(item, index) {
+        if (item.name === "Support Desk") // Chatbot messages - should be LEFT
+        {
+            html += '<div class="messages__item messages__item--visitor">' + item.message + '</div>'
+        }
+        else // User/Visitor messages - should be RIGHT
+        {
+            html += '<div class="messages__item messages__item--operator">' + item.message + '</div>'
+        }
+      });
 
-        const chatmessage = chatbox.querySelector('.chatbox__messages');
-        chatmessage.innerHTML = html;
-    }
+    const chatmessage = chatbox.querySelector('.chatbox__messages');
+    chatmessage.innerHTML = html;
+}
 }
 
 

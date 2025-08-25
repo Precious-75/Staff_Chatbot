@@ -4,32 +4,35 @@
       "tag": "greeting",
       "patterns": [
         "Hi",
-        "Hey",
         "How are you",
-        "Is anyone there?",
         "Hello",
         "Good day"
       ],
       "responses": [
-        "Hey :-)",
-        "Hello, thanks for visiting",
-        "Hi there, what can I do for you?",
-        "Hi there, how can I help?"
+        "Hello! I see you're looking for assistance. I'm here to help with any work-related questions.",
+        "Hi there! I'm your digital workplace assistant. What can I help you accomplish today?",
+        "Welcome to the staff portal! I'm here to provide quick answers and guide you to the right resources.",
+        "Hi! I'm here to support you. What would you like assistance with today?"
       ]
+        
     },
     {
       "tag": "goodbye",
       "patterns": ["Bye", "See you later", "Goodbye"],
       "responses": [
-        "See you later, thanks for visiting",
-        "Have a nice day",
-        "Bye! Come back again soon."
+        "Is there anything else I can help you with today?",
+        "Was I able to resolve your inquiry? Feel free to ask if you need anything else.",
+        "I hope this information was helpful! Let me know if you need clarification on anything else.",
+        "Thank you for reaching out! If you have any more questions, don't hesitate to ask.",
+        "I hope I provided the information you needed. Please return if you have other questions!"
       ]
     },
     {
       "tag": "thanks",
       "patterns": ["Thanks", "Thank you", "That's helpful", "Thank's a lot!"],
-      "responses": ["Happy to help!", "Any time!", "My pleasure"]
+      "responses": ["Happy to help! Feel free to reach out anytime.",
+                    "Happy to help! Feel free to reach out anytime.", 
+                    "Glad I could help! I'm always available for your questions"]
     },
     {
       "tag": "items",
