@@ -9,10 +9,10 @@
         "Good day"
       ],
       "responses": [
-        "Hello! I see you're looking for assistance. I'm Greeny G here to help with any work-related questions.",
-        "Hi there! I'm Greeny G. What can I help you accomplish today?",
-        "Welcome to the staff portal! I'm Greeny G, here to provide quick answers and guide you to the right resources.",
-        "Hi! I'm Greeny G here to support you. What would you like assistance with today?"
+        "Hello! I see you're looking for assistance. I'm Greeny G here to help with any work-related questions.<br>Please Enter your Name and GreenSprings Email Address.",
+        "Hi there! I'm Greeny G. What can I help you accomplish today?<br>Please Enter your Name and GreenSprings Email Address.",
+        "Welcome to the staff portal! I'm Greeny G, here to provide quick answers and guide you to the right resources.<br>Please Enter your Name and GreenSprings Email Address.",
+        "Hi! I'm Greeny G here to support you. What would you like assistance with today?<br>Please Enter your Name and GreenSprings Email Address."
       ]
         
     },
