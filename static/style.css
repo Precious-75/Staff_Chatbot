@@ -5,10 +5,10 @@
 }
 
 body {
-    font-family: 'Nunito', sans-serif;
+    /* font-family: 'Nunito', sans-serif;
     font-weight: 700;
     font-size: 70%;
-    background: #f1f1f1;
+    background: #f1f1f1; */
 }
 
 *, html {
@@ -107,8 +107,8 @@ body {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
-    background: var(--primary); /* Purple for user */
-    color: black;
+    background: #f55d5d;
+    color: white;
     float: left;         /* Chatbot on LEFT */
     margin-right: auto;
     margin-left: 0;
