@@ -25,6 +25,7 @@ body {
     position: absolute;
     bottom: 30px;
     right: 30px;
+    font-size: 70%;
 }
 
 .chatbox__image--header img,

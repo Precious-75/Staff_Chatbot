@@ -4,12 +4,12 @@
     padding: 0;
 }
 
-body {
-    /* font-family: 'Nunito', sans-serif;
+/* body {
+    font-family: 'Nunito', sans-serif;
     font-weight: 700;
     font-size: 70%;
-    background: #f1f1f1; */
-}
+    background: #f1f1f1;
+} */
 
 *, html {
     --primaryGradient: linear-gradient(93.12deg,  #f55d5d 0.52%, #f80f0f 100%);
@@ -17,6 +17,7 @@ body {
     --primaryBoxShadow: 0px 10px 15px rgba(174, 132, 132, 0.1);
     --secondaryBoxShadow: 0px -10px 15px rgba(161, 18, 18, 0.1);
     --primary:  #f80f0f;
+    
 }
 
 /* CHATBOX
@@ -89,6 +90,7 @@ body {
     overflow-y: scroll;
     flex-direction: column-reverse;
     padding: 0 20px;
+    font-size: 70%;
 }
 
 /* Replace your message positioning styles with these: */
