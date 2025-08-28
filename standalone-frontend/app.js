@@ -71,16 +71,16 @@ class Chatbox {
 updateChatText(chatbox) {
     var html = '';
     this.messages.slice().reverse().forEach(function(item, index) {
-        if (item.name === "Support Desk") // Chatbot messages - should be LEFT
+        if (item.name === "Support Desk") 
         {
             html += '<div class="messages__item messages__item--visitor">' + item.message + '</div>'
         }
-        else // User/Visitor messages - should be RIGHT
+        else 
         {
             html += '<div class="messages__item messages__item--operator">' + item.message + '</div>'
         }
       });
-
+      
     const chatmessage = chatbox.querySelector('.chatbox__messages');
     chatmessage.innerHTML = html;
 }

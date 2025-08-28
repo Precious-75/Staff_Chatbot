@@ -6,17 +6,17 @@
 
 body {
     font-family: 'Nunito', sans-serif;
-    font-weight: 400;
-    font-size: 100%;
-    background: #F1F1F1;
+    font-weight: 700;
+    font-size: 70%;
+    background-image: url(images/greensprings-logo.png);
 }
 
 *, html {
-    --primaryGradient: linear-gradient(93.12deg, #d39bbe 0.52%, #0b0110 100%);
-    --secondaryGradient: linear-gradient(268.91deg, #05000a -2.14%, #9C1DE7 99.69%);
+  --primaryGradient: linear-gradient(93.12deg,  #f55d5d 0.52%, #f80f0f 100%);
+    --secondaryGradient: linear-gradient(93.12deg, #f55d5d -2.14%, #f80f0f 100%);
     --primaryBoxShadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
     --secondaryBoxShadow: 0px -10px 15px rgba(0, 0, 0, 0.1);
-    --primary: #581B98;
+    --primary:  #f80f0f;
 }
 
 /* CHATBOX
@@ -25,6 +25,18 @@ body {
     position: absolute;
     bottom: 30px;
     right: 30px;
+}
+
+.chatbox__image--header img,
+.chatbox__button img {
+    width: 30px;  
+    height: 30px;
+    object-fit: contain; 
+}
+
+.chatbox__image--header {
+    margin-left: -80px;  
+    margin-right: 5px;   
 }
 
 /* CONTENT IS CLOSE */
@@ -53,11 +65,13 @@ body {
 }
 
 .send__button {
-    padding: 6px;
-    background: transparent;
+    padding: 11px 10px;
+    background: #024e07;
     border: none;
     outline: none;
     cursor: pointer;
+    color: white;
+    border-radius: 60px;
 }
 
 
@@ -84,31 +98,34 @@ body {
     padding: 8px 12px;
     max-width: 70%;
     width: fit-content;
+    clear: both; /* Prevents float stacking issues */
 }
 
-/* Chatbot messages - LEFT side (Sam uses --visitor class) */
+/* Chatbot messages - LEFT side */
 .messages__item--visitor,
 .messages__item--typing {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
-    background: #E0E0E0; /* Gray for chatbot */
+    background: var(--primary); /* Purple for user */
     color: black;
-    margin-right: auto;  /* This pushes it to the LEFT */
+    float: left;         /* Chatbot on LEFT */
+    margin-right: auto;
     margin-left: 0;
-    float: left;
 }
 
+/* User messages - RIGHT side */
 .messages__item--operator {
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     border-bottom-left-radius: 20px;
-    background: var(--primary); /* Purple for user */
+   background:  #024e07; /* Dark Green for chatbot */
     color: white;
-    margin-left: auto;   /* This pushes it to the RIGHT */
+    float: right;        /* User on RIGHT */
+    margin-left: auto;
     margin-right: 0;
-    float: right;
 }
+
 /* FOOTER */
 .chatbox__footer {
     position: sticky;
@@ -142,39 +159,12 @@ body {
 }
 
 .chatbox__heading--header {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     color: white;
 }
 
 .chatbox__description--header {
-    font-size: .9rem;
-    color: white;
-}
-
-/* Messages */
-.chatbox__messages {
-    padding: 0 20px;
-}
-
-.messages__item {
-    margin-top: 10px;
-    background: #E0E0E0;
-    padding: 8px 12px;
-    max-width: 70%;
-}
-
-.messages__item--visitor,
-.messages__item--typing {
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    border-bottom-right-radius: 20px;
-}
-
-.messages__item--operator {
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    border-bottom-left-radius: 20px;
-    background: var(--primary);
+    font-size: .7rem;
     color: white;
 }
 
@@ -200,9 +190,6 @@ body {
     text-align: left;
 }
 
-.chatbox__send--footer {
-    color: white;
-}
 
 .chatbox__button button,
 .chatbox__button button:focus,
