@@ -112,7 +112,7 @@ def get_response(msg):
             if tag == intent["tag"]:
                 return random.choice(intent['responses'])
 
-    return "Can you please explain your request further?"
+    return "I do not understand your question. Can you please explain "    
 
 if __name__ == "__main__":
     print("Let's chat! (type 'quit' to exit)")
