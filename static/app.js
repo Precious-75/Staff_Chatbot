@@ -188,6 +188,28 @@ class Chatbox {
     }
 }
 
+// Fixed sendMessage function - now uses correct URL
+async function sendMessage(message) {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/predict', {  // Fixed: now matches the main fetch
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        const data = await response.json();
+        
+        // Add the response to chat
+        addMessageToChat(data.answer, 'bot');  // Keep your existing structure
+        
+    } catch (error) {
+        console.error('Error:', error);
+        addMessageToChat('Sorry, I\'m having trouble connecting.', 'bot');
+    }
+}
+
 // Floating text management
 class FloatingTextManager {
     constructor() {

@@ -1,8 +1,8 @@
 question,answer,Category,School_Level
 How do I reset my school email password?,Contact IT help desk or use the password reset link on the login page. You'll need to verify your identity with security questions or phone verification.,Account Management,All
-"The projector in my classroom isn't working, what should I do?","Check power cable connections, ensure projector is plugged in, press power button, and verify input source matches your device connection (HDMI/VGA).",Hardware,All
+The projector in my classroom isn't working, what should I do?","Check power cable connections, ensure projector is plugged in, press power button, and verify input source matches your device connection (HDMI/VGA).",Hardware,All
 How do I connect to the school WiFi?,"Select the school WiFi network, enter your staff credentials (username/password), or ask IT for the guest network password if needed.",Network,All
-"My laptop won't turn on, what's wrong?","Check if battery is charged, try holding power button for 10 seconds, plug in charger and wait 5 minutes, then try powering on again.",Hardware,All
+My laptop won't turn on, what's wrong?,"Check if battery is charged, try holding power button for 10 seconds, plug in charger and wait 5 minutes, then try powering on again.",Hardware,All
 How do I access the student information system?,"Use your web browser to go to the school portal URL, log in with your staff credentials, and navigate to the student information section.",Software,All
 The interactive whiteboard isn't responding to touch.,"Check USB connection to computer, restart the interactive whiteboard software, calibrate the touch screen, and ensure drivers are updated.",Hardware,Elementary/Secondary/IB
 How do I share files with other teachers?,"Use the school's shared drive, cloud storage system (Google Drive/OneDrive), or email. Ask IT for access permissions to shared folders.",File Management,All
