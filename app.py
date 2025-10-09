@@ -271,7 +271,7 @@ if __name__ == "__main__":
     print("SQLite database for chat history")
     print("\nEndpoints:")
     print("   - POST http://localhost:5000/chat(main endpoint)")
-    print("   - GET  http://localhost:5000/history/ (get chat history)")
+    print("   - GET  http://localhost:5000/history (get chat history)")
     print("   - http://localhost:5000/test-groq")
     print("   - http://localhost:5000/test-db")
     app.run(port=5000, debug=True)
