@@ -1,4 +1,3 @@
-from weakref import ref
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from chat import get_response, load_csv_qa
@@ -17,10 +16,10 @@ app = Flask(__name__)
 CORS(app)
 
 # SQLite Database
-from db import app, db, ChatHistory, init_db
+from db import db, ChatHistory, init_db
 from datetime import datetime
 
-init_db()
+init_db(app)
 
 # CONFIDENCE THRESHOLD
 CONFIDENCE_THRESHOLD = 0.90
