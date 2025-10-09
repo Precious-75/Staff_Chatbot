@@ -113,7 +113,7 @@ class Chatbox {
 
         try {
             // Start API call but don't await it yet
-            const apiPromise = fetch('http://127.0.0.1:5000/predict', {
+            const apiPromise = fetch('/predict', {
                 method: 'POST',
                 body: JSON.stringify({ message: text1 }),
                 mode: 'cors',
@@ -191,7 +191,7 @@ class Chatbox {
 // Fixed sendMessage function - now uses correct URL
 async function sendMessage(message) {
     try {
-        const response = await fetch('http://127.0.0.1:5000/predict', {  // Fixed: now matches the main fetch
+        const response = await fetch('/predict', {  // Fixed: now matches the main fetch
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
