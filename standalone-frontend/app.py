@@ -10,9 +10,11 @@ def index_get():
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    text = request.get_json().get("message")
-    #check if text is valid
-    response = get_response(text)
+    data = request.get_json(silent=True) or {}
+    text = (data.get("message") or "").strip()
+    if not text:
+        return jsonify({"answer": "Please enter a message."})
+    response, _confidence = get_response(text)
     message = {"answer": response}
     return jsonify(message)
 
