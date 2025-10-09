@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbot</title>
+</head>
+<body>
+<div class="container">
+    <div class="chatbox">
+        <div class="chatbox__support">
+            <div class="chatbox__header">
+                <div class="chatbox__image--header">
+                    <img src="{{ url_for('static', filename='./images/greensprings-logo.png') }}" alt="image">
+                </div>
+                <div class="chatbox__content--header">
+                    <h1 class="chatbox__heading--header">Support Desk</h1>
+                    <p class="chatbox__description--header">Hello! How may I assist you today?</p>
+
+                       <!--<button class="new-chat__button" onclick="location.reload()">New Chat</button>-->
+
+                </div>
+                </div>
+            <div class="chatbox__messages">
+                <div></div>
+            </div>
+           <div class="chatbox__footer">
+             <input type="text" placeholder="Write message here...">
+             <button class="send__button">Send</button>
+</div>
+        </div>
+        <div class="chatbox__button">
+            <button><img src="{{ url_for('static', filename='./images/greensprings-logo.png') }}" /></button>
+        </div>
+    </div>
+</div>
+
+<div class="floating-text" id="floating-text">
+                       Hello! How may I assist you today?   
+    </div>
+</div>
+
+    <script>
+        $SCRIPT_ROOT = {{ request.script_root|tojson }};
+    </script>
+    <script type="text/javascript" src="{{ url_for('static', filename='app.js') }}"></script>
+
+</body>
+</html>

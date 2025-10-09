@@ -1,0 +1,15 @@
+﻿env
+.env
+src.env
+*.env
+.env.*
+*firebase*.json
+*adminsdk*.json
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+*.db
+*.sqlite
+.vscode/
+.idea/
