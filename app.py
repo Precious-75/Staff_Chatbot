@@ -1,4 +1,3 @@
-from weakref import ref
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from chat import get_response, load_csv_qa
@@ -13,11 +12,11 @@ load_dotenv('.env')
 API_KEY = os.getenv('API_KEY')
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-app = Flask(__name__)
-CORS(app)
-
 # SQLite Database
 from db import app, db, ChatHistory, init_db
+
+# Ensure CORS is applied to the actual Flask app instance
+CORS(app)
 from datetime import datetime
 
 init_db()
@@ -164,7 +163,7 @@ def chat():
         if not user_message:
             return jsonify({"reply": "Please enter a message."})
         
-        print(f"\n Received message from user {user_id}: {user_message}")
+        print(f"\n📩 /chat request | user_id={user_id} | message={user_message}")
         
         # Get smart response using routing logic
         bot_response = get_smart_response(user_message)
@@ -184,7 +183,7 @@ def chat():
         return jsonify({"reply": bot_response})
         
     except Exception as e:
-        print(f" Error in /chat endpoint: {e}")
+        print(f"❌ Error in /chat endpoint: {e}")
         return jsonify({"reply": "Sorry, I'm having technical difficulties. Please try again."})
 
 @app.route("/history", methods=["GET"])
@@ -212,8 +211,8 @@ def history():
 def predict():
     """Alternative chat endpoint (for compatibility)"""
     try:
-        data = request.get_json()
-        text = data.get("message", "").strip()
+        data = request.get_json(silent=True) or {}
+        text = (data.get("message") or "").strip()
         
         if not text:
             return jsonify({"answer": "Please enter a message."})
@@ -224,7 +223,7 @@ def predict():
         return jsonify({"answer": response})
         
     except Exception as e:
-        print(f"Error in /predict endpoint: {e}")
+        print(f"❌ Error in /predict endpoint: {e}")
         return jsonify({"answer": "Sorry, I'm having technical difficulties."})
 
 # THE ENDPOINTS FOR TESTING
