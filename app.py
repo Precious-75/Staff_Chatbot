@@ -14,13 +14,19 @@ API_KEY = os.getenv('API_KEY')
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 app = Flask(__name__)
+
+# Configure database on the actual Flask app instance
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///chatbot.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Apply CORS to the same app instance used for routes
 CORS(app)
 
-# SQLite Database
-from db import app, db, ChatHistory, init_db
+# SQLite Database (bind SQLAlchemy to this app)
+from db import db, ChatHistory, init_db
 from datetime import datetime
 
-init_db()
+init_db(app)
 
 # CONFIDENCE THRESHOLD
 CONFIDENCE_THRESHOLD = 0.90
@@ -212,20 +218,23 @@ def history():
 def predict():
     """Alternative chat endpoint (for compatibility)"""
     try:
-        data = request.get_json()
-        text = data.get("message", "").strip()
-        
+        data = request.get_json(silent=True) or {}
+        # Accept message from JSON body, form, or query as fallback
+        text = (data.get("message")
+                or request.form.get("message")
+                or request.args.get("message", "")).strip()
+
         if not text:
-            return jsonify({"answer": "Please enter a message."})
-        
+            return jsonify({"answer": "Please enter a message."}), 200
+
         # Get smart response
         response = get_smart_response(text)
-        
-        return jsonify({"answer": response})
-        
+
+        return jsonify({"answer": response}), 200
+
     except Exception as e:
         print(f"Error in /predict endpoint: {e}")
-        return jsonify({"answer": "Sorry, I'm having technical difficulties."})
+        return jsonify({"answer": "Sorry, I'm having technical difficulties."}), 200
 
 # THE ENDPOINTS FOR TESTING
 
