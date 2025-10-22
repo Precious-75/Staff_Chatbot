@@ -1,13 +1,12 @@
-from weakref import ref
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
-from chat import get_response, load_csv_qa
+from chat import get_response
 import requests
-import json
-import re
-import datetime
+import sqlite3
 import os
+from datetime import datetime
 from dotenv import load_dotenv
+from handbook_rag import init_rag, get_rag_context
 
 load_dotenv('.env')
 API_KEY = os.getenv('API_KEY')
@@ -16,138 +15,216 @@ API_URL = "https://api.groq.com/openai/v1/chat/completions"
 app = Flask(__name__)
 CORS(app)
 
-# SQLite Database
-from db import app, db, ChatHistory, init_db
-from datetime import datetime
+# Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chatbot.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'your-secret-key-here'
 
-init_db()
+from db import db, init_db
+init_db(app)
 
-# CONFIDENCE THRESHOLD
-CONFIDENCE_THRESHOLD = 0.90
+# Initialize RAG system at startup
+HANDBOOK_PDF_PATH = "HandbookQA.pdf"
+if os.path.exists(HANDBOOK_PDF_PATH):
+    print("📚 Initializing RAG handbook system...")
+    init_rag(HANDBOOK_PDF_PATH)
+    print("✅ RAG system ready!")
+else:
+    print(f"⚠️  Handbook not found at: {HANDBOOK_PDF_PATH}")
 
-def get_groq_response(message):
-    """Get response from Groq API"""
+# CONFIDENCE THRESHOLDS
+CSV_CONFIDENCE_THRESHOLD = 0.30
+RAG_CONFIDENCE_THRESHOLD = 0.30
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def is_greeting(message):
+    """Check if message is a greeting"""
+    greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 
+                 'good evening', 'greetings', 'howdy', 'sup', 'what\'s up']
+    msg_lower = message.lower().strip()
+    return any(greeting in msg_lower for greeting in greetings) and len(msg_lower.split()) <= 3
+
+def get_groq_response(message, context=None, is_greeting=False):
+    """Get response from Groq API as Greeny G"""
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
     
+    current_date = datetime.now().strftime("%B %Y")
+    
+    # Build system prompt based on context type
+    if is_greeting:
+        system_content = """You are Greeny G, a friendly support assistant for Greensprings School.
+Respond to greetings warmly but briefly (1-2 sentences max).
+Introduce yourself as Greeny G and offer to help.
+Example: "Hi! I'm Greeny G, your Greensprings School assistant. How can I help you today?" """
+        
+    elif context:
+        system_content = f"""You are Greeny G, a support assistant for Greensprings School.
+Current date: {current_date}
+
+Use the handbook information below to answer accurately and concisely.
+
+HANDBOOK CONTEXT:
+{context}
+
+Instructions:
+- Answer directly, no greetings
+- Cite the handbook when relevant
+- Be clear and professional
+- Keep under 200 words
+- If handbook doesn't fully answer, supplement with knowledge
+- State clearly if something isn't in the handbook"""
+    else:
+        system_content = f"""You are Greeny G, a support assistant for Greensprings School.
+Current date: {current_date}
+
+Answer questions clearly and concisely. Keep responses under 150 words.
+Be helpful, professional, and accurate. If you don't know, say so and suggest contacting support."""
+    
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant. Provide clear, concise, and accurate responses. Keep responses under 150 words and be professional."
-            },
-            {
-                "role": "user", 
-                "content": message
-            }
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": message}
         ],
         "temperature": 0.7,
-        "max_tokens": 200,
+        "max_tokens": 250 if is_greeting else 300,
         "top_p": 0.9
     }
     
     try:
-        print(f"🦙 Asking Groq: {message}")
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
             result = response.json()
             answer = result['choices'][0]['message']['content'].strip()
-            print(f"🦙 Groq responded: {answer[:100]}...")
             return answer
         else:
-            print(f"🦙 Groq error: {response.status_code} - {response.text}")
+            print(f"🦙 Groq error: {response.status_code}")
             return None
             
-    except requests.exceptions.ConnectionError:
-        print("🦙 Connection error to Groq API")
-        return None
     except Exception as e:
         print(f"🦙 Groq error: {e}")
         return None
 
 def is_weak_response(response):
-    """Check if the response from your existing system is weak/unhelpful"""
-    if not response or len(response.strip()) < 5:
+    """Check if response is weak/unhelpful"""
+    if not response or len(response.strip()) < 10:
         return True
     
     weak_phrases = [
-        'i do not understand',
-        'i don\'t understand',
-        'i don\'t know',
-        'not sure',
-        'i can\'t help',
-        'i don\'t have',
-        'unclear',
-        'please explain',
-        'can you please explain',
-        'try again',
-        'contact support',
-        'i\'m not trained',
-        'out of scope'
+        'i do not understand', 'i don\'t understand', 'i don\'t know',
+        'not sure', 'i can\'t help', 'unclear', 'i\'m not trained'
     ]
     
     response_lower = response.lower()
     return any(phrase in response_lower for phrase in weak_phrases)
 
+# ============================================================================
+# SMART RESPONSE ROUTING
+# ============================================================================
+
 def get_smart_response(user_message):
     """
-    Simple routing:
-    1. Try your system first (JSON intents + CSV)
-    2. If weak response -> Try Groq as fallback
-    3. Return whichever worked
+    Flow: Greetings → CSV → Handbook → Groq AI → Default
     """
     
-    print(f"\n👤 User: {user_message}")
+    print(f"\n{'='*70}")
+    print(f"👤 USER: {user_message}")
+    print(f"{'='*70}")
     
-    # ALWAYS try your existing system first
-    print("🎯 Trying your existing system (JSON intents + CSV)...")
+    # ========================================================================
+    # STEP 1: Handle Greetings
+    # ========================================================================
+    if is_greeting(user_message):
+        print("\n👋 Detected greeting - using Greeny G")
+        greeting_response = get_groq_response(user_message, is_greeting=True)
+        if greeting_response:
+            print("✅ Greeting handled by Greeny G")
+            return greeting_response
+    
+    # ========================================================================
+    # STEP 2: Check CSV Database (School QA)
+    # ========================================================================
+    print("\n🎯 STEP 2: Checking CSV database (School QA)...")
     try:
         result = get_response(user_message)
         
-        # Check if result is a tuple (response, confidence) or just a string
         if isinstance(result, tuple):
-            existing_response, confidence = result
-            print(f"📋 Your system: {existing_response}")
-            print(f"🧠 Confidence: {confidence}")
+            csv_response, csv_confidence = result
+            print(f"   Confidence: {csv_confidence:.2%}")
             
-            # If confidence is good, use your system's response
-            if confidence >= CONFIDENCE_THRESHOLD:
-                print("✅ Using your system's response (good confidence)")
-                return existing_response
-        else:
-            # Old format - just a string response
-            existing_response = result
-            print(f"📋 Your system: {existing_response}")
-        
-        # Check if the response is strong/helpful
-        if existing_response and not is_weak_response(existing_response):
-            print("✅ Using your system's response")
-            return existing_response
-        
-        # If weak response, try Groq as fallback
-        print("⚠️ Your system gave weak response - trying Groq as fallback")
-        groq_response = get_groq_response(user_message)
-        
-        if groq_response:
-            print("✅ Using Groq's response")
-            return groq_response
-        else:
-            print("⚠️ Groq also failed, using original response")
-            return existing_response or "I'm not sure I understand. Could you please rephrase your question?"
-            
+            if csv_response and csv_confidence >= CSV_CONFIDENCE_THRESHOLD and not is_weak_response(csv_response):
+                print(f"✅ CSV HIGH CONFIDENCE ({csv_confidence:.2%}) - USING")
+                return csv_response
+            else:
+                print(f"⚠️  CSV confidence too low or weak response: {csv_confidence:.2%}")
+    
     except Exception as e:
-        print(f"❌ Error with your system: {e}")
-        # Try Groq as fallback if system crashes
-        groq_response = get_groq_response(user_message)
-        if groq_response:
-            return groq_response
-        return "I'm having technical difficulties. Please try again."
+        print(f"❌ CSV Error: {e}")
+    
+    # ========================================================================
+    # STEP 3: Check Handbook (RAG) - ALWAYS CHECK!
+    # ========================================================================
+    print("\n📚 STEP 3: Checking Handbook (RAG)...")
+    handbook_context = None
+    handbook_pages = []
+    
+    try:
+        handbook_context, rag_confidence, handbook_pages = get_rag_context(user_message)
+        print(f"   Context length: {len(handbook_context) if handbook_context else 0} chars")
+        print(f"   Confidence: {rag_confidence:.2%}")
+        print(f"   Pages: {handbook_pages}")
+        print(f"   Threshold: {RAG_CONFIDENCE_THRESHOLD:.2%}")
+        
+        # If we have ANY handbook context, use it with Greeny G
+        if handbook_context and len(handbook_context.strip()) > 10:
+            print(f"✅ Found handbook content - using Greeny G with context")
+            groq_response = get_groq_response(user_message, context=handbook_context)
+            
+            if groq_response and not is_weak_response(groq_response):
+                # Only add citation if confidence is high enough
+                if rag_confidence >= RAG_CONFIDENCE_THRESHOLD and handbook_pages:
+                    pages_str = ", ".join(map(str, sorted(set(handbook_pages))))
+                    response_with_citation = f"{groq_response}\n\nSource: Employee Handbook (Pages: {pages_str})"
+                    print("✅ SUCCESS - Greeny G with Handbook (with citation)")
+                    return response_with_citation
+                else:
+                    print("✅ SUCCESS - Greeny G with Handbook (no citation)")
+                    return groq_response
+        else:
+            print(f"⚠️  No relevant handbook content found")
+    
+    except Exception as e:
+        print(f"❌ RAG Error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # ========================================================================
+    # STEP 4: Groq AI Fallback (General Knowledge)
+    # ========================================================================
+    print("\n🦙 STEP 4: Using Greeny G fallback (General Knowledge)...")
+    groq_response = get_groq_response(user_message)
+    
+    if groq_response and not is_weak_response(groq_response):
+        print("✅ SUCCESS - Greeny G (General Knowledge)")
+        return groq_response
+    
+    # ========================================================================
+    # STEP 5: Default Response
+    # ========================================================================
+    print("❌ All systems failed - returning default response")
+    return ("I'm sorry, I couldn't find a specific answer to your question. "
+            "Please try rephrasing or contact Greensprings School support for assistance.")
 
-# THE ROUTES
+# ============================================================================
+# ROUTES
+# ============================================================================
 
 @app.route("/", methods=["GET"])
 def index_get():
@@ -155,62 +232,71 @@ def index_get():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Main chat endpoint - handles user messages"""
+    """Main chat endpoint"""
     try:
         data = request.get_json(silent=True) or {}
         user_id = data.get("user_id", "guest")
-        user_message = data.get("message", "")
+        user_message = data.get("message", "").strip()
         
         if not user_message:
             return jsonify({"reply": "Please enter a message."})
         
-        print(f"\n Received message from user {user_id}: {user_message}")
+        print(f"\n📨 Received from {user_id}: {user_message}")
         
-        # Get smart response using routing logic
+        # Get smart response
         bot_response = get_smart_response(user_message)
         
         # Save to database
-        with app.app_context():
-            new_chat = ChatHistory(
-                user_id=user_id,
-                user_message=user_message,
-                bot_response=bot_response,
-                timestamp=datetime.utcnow()
-            )
-            db.session.add(new_chat)
-            db.session.commit()
-            print(f"Saved to database: ID {new_chat.id}")
+        conn = sqlite3.connect('chat_history.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO conversations (user_id, message, response)
+            VALUES (?, ?, ?)
+        ''', (user_id, user_message, bot_response))
+        conn.commit()
+        conn.close()
+        print(f"💾 Saved for {user_id}")
         
         return jsonify({"reply": bot_response})
         
     except Exception as e:
-        print(f" Error in /chat endpoint: {e}")
-        return jsonify({"reply": "Sorry, I'm having technical difficulties. Please try again."})
+        print(f"❌ Error: {e}")
+        return jsonify({"reply": "Sorry, I'm experiencing technical difficulties. Please try again."})
 
-@app.route("/history", methods=["GET"])
-def history():
-    """Get chat history from database"""
+@app.route("/chat/<user_id>", methods=["GET"])
+def get_history(user_id):
+    """Get chat history for a user"""
     try:
-        chats = ChatHistory.query.order_by(ChatHistory.timestamp.asc()).all()
-        history_data = [
+        conn = sqlite3.connect('chat_history.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT message, response, timestamp 
+            FROM conversations 
+            WHERE user_id = ?
+            ORDER BY timestamp DESC
+        ''', (user_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        history = [
             {
-                "id": chat.id,
-                "user_id": chat.user_id,
-                "user": chat.user_message,
-                "bot": chat.bot_response,
-                "timestamp": chat.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                "message": row[0],
+                "response": row[1],
+                "timestamp": row[2]
             }
-            for chat in chats
+            for row in rows
         ]
-        print(f"Retrieved {len(history_data)} chat messages from database")
-        return jsonify(history_data)
+        
+        return jsonify({"history": history})
+        
     except Exception as e:
-        print(f" Error in /history endpoint: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"❌ Error: {e}")
+        return jsonify({"error": "Could not fetch history"})
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    """Alternative chat endpoint (for compatibility)"""
+    """Alternative chat endpoint"""
     try:
         data = request.get_json()
         text = data.get("message", "").strip()
@@ -218,60 +304,88 @@ def predict():
         if not text:
             return jsonify({"answer": "Please enter a message."})
         
-        # Get smart response
         response = get_smart_response(text)
-        
         return jsonify({"answer": response})
         
     except Exception as e:
-        print(f"Error in /predict endpoint: {e}")
-        return jsonify({"answer": "Sorry, I'm having technical difficulties."})
+        print(f"❌ Error: {e}")
+        return jsonify({"answer": "Sorry, I'm experiencing technical difficulties."})
 
-# THE ENDPOINTS FOR TESTING
+# ============================================================================
+# TEST ENDPOINTS
+# ============================================================================
 
 @app.route("/test-groq", methods=["GET"])
 def test_groq():
-    """Test Groq API connection"""
-    test_response = get_groq_response("What is 2+20?")
+    """Test Groq API"""
+    test_response = get_groq_response("What year is it now?")
     if test_response:
-        return f"Groq is working! Response: {test_response}"
+        return f"✅ Greeny G working! Response: {test_response}"
     else:
-        return "Groq is not working. Check your API key and connection."
+        return "❌ Greeny G not working"
 
 @app.route("/test-csv")
 def test_csv():
-    """Test CSV/intents system"""
+    """Test CSV"""
     test_response = get_response("student login")
-    return f"Your system response: {test_response}"
+    return f"CSV: {test_response}"
 
-@app.route("/test-db")
-def test_db():
-    """Test database connection"""
+@app.route("/test-rag")
+def test_rag():
+    """Test RAG"""
+    test_question = "Can PE staff wear their sportswear throughout the day?"
+    context, confidence, pages = get_rag_context(test_question)
+    
+    if context:
+        return f"""✅ RAG working!
+Test: {test_question}
+Confidence: {confidence:.2%}
+Pages: {pages}
+Context: {context[:300]}..."""
+    else:
+        return f"⚠️  RAG found nothing for: {test_question}"
+
+@app.route("/test-all")
+def test_all():
+    """Test all systems"""
+    results = []
+    
+    # Test CSV
     try:
-        # Add a test message
-        test_chat = ChatHistory(
-            user_id="test_user",
-            user_message="Test message",
-            bot_response="Test response",
-            timestamp=datetime.utcnow()
-        )
-        db.session.add(test_chat)
-        db.session.commit()
-        
-        # Count total messages
-        count = ChatHistory.query.count()
-        return f"Database is working! Total messages: {count}"
+        csv_test = get_response("test")
+        results.append("✅ CSV: Working")
     except Exception as e:
-        return f"Database error: {e}"
+        results.append(f"❌ CSV: Failed - {e}")
+    
+    # Test RAG
+    try:
+        context, conf, pages = get_rag_context("test")
+        results.append(f"✅ RAG: Working (confidence: {conf:.2%})")
+    except Exception as e:
+        results.append(f"❌ RAG: Failed - {e}")
+    
+    # Test Greeny G (Groq)
+    try:
+        groq_test = get_groq_response("test")
+        if groq_test:
+            results.append("✅ Greeny G (Groq): Working")
+        else:
+            results.append("❌ Greeny G: No response")
+    except Exception as e:
+        results.append(f"❌ Greeny G: Failed - {e}")
+    
+    return "<br>".join(results)
 
 if __name__ == "__main__":
-    print("Starting chatbot server...")
-    print("Your system (JSON intents + CSV) tries first")
-    print("Groq as fallback for weak responses")
-    print("SQLite database for chat history")
-    print("\nEndpoints:")
-    print("   - POST http://localhost:5000/chat(main endpoint)")
-    print("   - GET  http://localhost:5000/history (get chat history)")
-    print("   - http://localhost:5000/test-groq")
-    print("   - http://localhost:5000/test-db")
+    print("\n" + "="*70)
+    print("🚀 STARTING GREENY G CHATBOT")
+    print("="*70)
+    print("\n📋 Response Flow:")
+    print("   1️⃣  Greetings → Greeny G")
+    print("   2️⃣  CSV Database (School QA)")
+    print("   3️⃣  Handbook (RAG) - ALWAYS CHECK")
+    print("   4️⃣  Greeny G (Groq AI Fallback)")
+    print("   5️⃣  Default Response")
+    print("\n" + "="*70 + "\n")
+    
     app.run(port=5000, debug=True)
