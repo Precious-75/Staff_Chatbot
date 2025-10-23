@@ -48,7 +48,7 @@ def is_greeting(message):
     return any(greeting in msg_lower for greeting in greetings) and len(msg_lower.split()) <= 3
 
 def get_groq_response(message, context=None, is_greeting=False):
-    """Get response from Groq API as Greeny G"""
+    """Get response from Groq API as Greeny G - SHORT AND DIRECT"""
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -59,32 +59,37 @@ def get_groq_response(message, context=None, is_greeting=False):
     # Build system prompt based on context type
     if is_greeting:
         system_content = """You are Greeny G, a friendly support assistant for Greensprings School.
-Respond to greetings warmly but briefly (1-2 sentences max).
-Introduce yourself as Greeny G and offer to help.
-Example: "Hi! I'm Greeny G, your Greensprings School assistant. How can I help you today?" """
+Respond to greetings warmly but briefly (1 sentence max).
+Example: "Hi! I'm Greeny G. How can I help you today?" """
         
     elif context:
         system_content = f"""You are Greeny G, a support assistant for Greensprings School.
 Current date: {current_date}
 
-Use the handbook information below to answer accurately and concisely.
-
 HANDBOOK CONTEXT:
 {context}
 
-Instructions:
-- Answer directly, no greetings
-- Cite the handbook when relevant
-- Be clear and professional
-- Keep under 200 words
-- If handbook doesn't fully answer, supplement with knowledge
-- State clearly if something isn't in the handbook"""
+CRITICAL INSTRUCTIONS:
+- Answer ONLY what was asked - nothing extra
+- Keep responses under 50 words
+- Be direct and concise
+- Use simple, natural language
+- Do NOT add extra information not asked for
+- Do NOT mention the handbook or sources
+- Just answer the specific question asked
+
+Example:
+Question: "What time does school start?"
+Good: "School starts at 8:00 AM."
+Bad: "According to the handbook, school starts at 8:00 AM. This ensures students have adequate time to prepare for their classes and participate in morning activities."
+
+ANSWER ONLY WHAT IS ASKED."""
     else:
         system_content = f"""You are Greeny G, a support assistant for Greensprings School.
 Current date: {current_date}
 
-Answer questions clearly and concisely. Keep responses under 150 words.
-Be helpful, professional, and accurate. If you don't know, say so and suggest contacting support."""
+Answer questions in 1-2 sentences maximum (under 50 words).
+Be direct and helpful. Answer ONLY what was asked."""
     
     payload = {
         "model": "llama-3.3-70b-versatile",
@@ -92,9 +97,9 @@ Be helpful, professional, and accurate. If you don't know, say so and suggest co
             {"role": "system", "content": system_content},
             {"role": "user", "content": message}
         ],
-        "temperature": 0.7,
-        "max_tokens": 250 if is_greeting else 300,
-        "top_p": 0.9
+        "temperature": 0.3,  # Lower temperature for more focused responses
+        "max_tokens": 100,  # Reduced from 250/300
+        "top_p": 0.8
     }
     
     try:
@@ -184,19 +189,12 @@ def get_smart_response(user_message):
         
         # If we have ANY handbook context, use it with Greeny G
         if handbook_context and len(handbook_context.strip()) > 10:
-            print(f"✅ Found handbook content - using Greeny G with context")
+            print(f"✅ Found handbook content - using Greeny G (concise mode)")
             groq_response = get_groq_response(user_message, context=handbook_context)
             
             if groq_response and not is_weak_response(groq_response):
-                # Only add citation if confidence is high enough
-                if rag_confidence >= RAG_CONFIDENCE_THRESHOLD and handbook_pages:
-                    pages_str = ", ".join(map(str, sorted(set(handbook_pages))))
-                    response_with_citation = f"{groq_response}\n\nSource: Employee Handbook (Pages: {pages_str})"
-                    print("✅ SUCCESS - Greeny G with Handbook (with citation)")
-                    return response_with_citation
-                else:
-                    print("✅ SUCCESS - Greeny G with Handbook (no citation)")
-                    return groq_response
+                print("✅ SUCCESS - Greeny G with Handbook (concise)")
+                return groq_response
         else:
             print(f"⚠️  No relevant handbook content found")
     
@@ -332,16 +330,22 @@ def test_csv():
 
 @app.route("/test-rag")
 def test_rag():
-    """Test RAG"""
+    """Test RAG with concise responses"""
     test_question = "Can PE staff wear their sportswear throughout the day?"
     context, confidence, pages = get_rag_context(test_question)
     
     if context:
-        return f"""✅ RAG working!
+        concise_response = get_groq_response(test_question, context=context)
+        return f"""✅ RAG with Concise Responses working!
 Test: {test_question}
 Confidence: {confidence:.2%}
 Pages: {pages}
-Context: {context[:300]}..."""
+
+Original Context (first 300 chars):
+{context[:300]}...
+
+Concise Response:
+{concise_response}"""
     else:
         return f"⚠️  RAG found nothing for: {test_question}"
 
@@ -368,7 +372,7 @@ def test_all():
     try:
         groq_test = get_groq_response("test")
         if groq_test:
-            results.append("✅ Greeny G (Groq): Working")
+            results.append("✅ Greeny G (Groq): Working with Concise Responses")
         else:
             results.append("❌ Greeny G: No response")
     except Exception as e:
@@ -378,14 +382,15 @@ def test_all():
 
 if __name__ == "__main__":
     print("\n" + "="*70)
-    print("🚀 STARTING GREENY G CHATBOT")
+    print("🚀 STARTING GREENY G CHATBOT - CONCISE MODE")
     print("="*70)
     print("\n📋 Response Flow:")
     print("   1️⃣  Greetings → Greeny G")
     print("   2️⃣  CSV Database (School QA)")
-    print("   3️⃣  Handbook (RAG) - ALWAYS CHECK")
+    print("   3️⃣  Handbook (RAG) → Concise answers by Greeny G")
     print("   4️⃣  Greeny G (Groq AI Fallback)")
     print("   5️⃣  Default Response")
-    print("\n" + "="*70 + "\n")
+    print("\n✨ NEW: All responses are now short and direct!")
+    print("="*70 + "\n")
     
     app.run(port=5000, debug=True)

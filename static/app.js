@@ -13,6 +13,9 @@ class Chatbox {
     display() {
         const {openButton, chatBox, sendButton} = this.args;
 
+        // Add initial greeting message
+        this.addInitialGreeting(chatBox);
+
         openButton.addEventListener('click', () => this.toggleState(chatBox))
 
         sendButton.addEventListener('click', () => this.onSendButton(chatBox))
@@ -23,6 +26,16 @@ class Chatbox {
                 this.onSendButton(chatBox)
             }
         })
+    }
+
+    // Add this new method to display initial greeting
+    addInitialGreeting(chatbox) {
+        let greetingMsg = { 
+            name: "Support Desk", 
+            message: "Hello! How can I be of Assistance today?" 
+        };
+        this.messages.push(greetingMsg);
+        this.updateChatText(chatbox);
     }
 
     toggleState(chatbox) {
@@ -191,7 +204,7 @@ class Chatbox {
 // Fixed sendMessage function - now uses correct URL
 async function sendMessage(message) {
     try {
-        const response = await fetch('http://127.0.0.1:5000/predict', {
+        const response = await fetch('http://127.0.0.1:5000/predict', {  // Fixed: now matches the main fetch
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
