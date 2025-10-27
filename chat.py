@@ -11,9 +11,6 @@ API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 bot_name = "Greeny G"
 
-# ============================================================================
-# CSV LOADING AND MATCHING
-# ============================================================================
 
 def load_csv_qa(csv_file_path):
     """
@@ -40,12 +37,12 @@ def load_csv_qa(csv_file_path):
                         'keywords': extract_keywords(question)
                     })
                     
-        print(f"✅ Loaded {len(qa_pairs)} Q&A pairs from CSV")
+        print(f" Loaded {len(qa_pairs)} Q&A pairs from CSV")
         
     except FileNotFoundError:
-        print(f"❌ CSV file not found: {csv_file_path}")
+        print(f" CSV file not found: {csv_file_path}")
     except Exception as e:
-        print(f"❌ Error loading CSV: {e}")
+        print(f" Error loading CSV: {e}")
         
     return qa_pairs
 
@@ -106,15 +103,13 @@ def find_csv_answer(user_input, threshold=0.5):
             best_match = qa_pair
     
     if best_match:
-        print(f"✅ Best CSV match (score: {best_score:.2f}): {best_match['question'][:80]}")
+        print(f" Best CSV match (score: {best_score:.2f}): {best_match['question'][:80]}")
         return best_match['answer'], best_score
     else:
-        print(f"⚠️  No CSV match found above threshold {threshold}")
+        print(f"  No CSV match found above threshold {threshold}")
         return None, 0
 
-# ============================================================================
-# GROQ API (GREENY G)
-# ============================================================================
+#groq Api call
 
 def get_groq_response(message, context=None, is_greeting=False):
     """Get response from Groq API as Greeny G"""
@@ -161,25 +156,22 @@ Be helpful, professional, and accurate. If you don't know something, say so and 
     }
     
     try:
-        print(f"🦙 Asking Greeny G: {message[:60]}...")
+        print(f" Asking Greeny G: {message[:60]}...")
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
             result = response.json()
             answer = result['choices'][0]['message']['content'].strip()
-            print(f"🦙 Greeny G responded ({len(answer)} chars)")
+            print(f" Greeny G responded ({len(answer)} chars)")
             return answer
         else:
-            print(f"❌ Groq error: {response.status_code}")
+            print(f" Groq error: {response.status_code}")
             return None
             
     except Exception as e:
-        print(f"❌ Groq error: {e}")
+        print(f" Groq error: {e}")
         return None
 
-# ============================================================================
-# MAIN RESPONSE FUNCTION
-# ============================================================================
 
 def get_response(msg):
     """
@@ -191,21 +183,18 @@ def get_response(msg):
     
     Returns: (response, confidence_score) or (None, 0)
     """
-    print(f"\n🔍 Processing: '{msg}'")
+    print(f"\n Processing: '{msg}'")
     
     # Try to find answer in CSV
     csv_answer, csv_confidence = find_csv_answer(msg)
     
     if csv_answer and csv_confidence > 0:
-        print(f"✅ Using CSV response (confidence: {csv_confidence:.2%})")
+        print(f" Using CSV response (confidence: {csv_confidence:.2%})")
         return csv_answer, csv_confidence
     
-    print("⚠️  No CSV match found")
+    print("  No CSV match found")
     return None, 0.0
 
-# ============================================================================
-# TEST FUNCTION
-# ============================================================================
 
 def test_csv_matching():
     """Test the CSV matching with sample questions"""
@@ -217,7 +206,7 @@ def test_csv_matching():
         "printer problems"
     ]
     
-    print("🧪 Testing CSV matching:")
+    print(" Testing CSV matching:")
     print("="*70)
     for question in test_questions:
         answer, confidence = find_csv_answer(question)
