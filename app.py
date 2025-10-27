@@ -12,7 +12,7 @@ load_dotenv('.env')
 API_KEY = os.getenv('API_KEY')
 API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='C:/Staff_Chatbot/static') 
 CORS(app)
 
 # Database Configuration
@@ -20,8 +20,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chatbot.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 
-from db import db, init_db
-init_db(app)
+# from db import db, init_db
+# init_db(app)
 
 # Initialize RAG system at startup
 HANDBOOK_PDF_PATH = "HandbookQA.pdf"
