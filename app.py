@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from handbook_rag import init_rag, get_rag_context
+from urllib.parse import quote
 
 load_dotenv('.env')
 API_KEY = os.getenv('API_KEY')
@@ -15,36 +16,74 @@ API_URL = "https://api.groq.com/openai/v1/chat/completions"
 app = Flask(__name__, template_folder='C:/Staff_Chatbot/static') 
 CORS(app)
 
-# Database Configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chatbot.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 
-# from db import db, init_db
-# init_db(app)
-
-# Initialize RAG system at startup
 HANDBOOK_PDF_PATH = "HandbookQA.pdf"
 if os.path.exists(HANDBOOK_PDF_PATH):
-    print("📚 Initializing RAG handbook system...")
     init_rag(HANDBOOK_PDF_PATH)
-    print("✅ RAG system ready!")
-else:
-    print(f"⚠️  Handbook not found at: {HANDBOOK_PDF_PATH}")
 
-# CONFIDENCE THRESHOLDS
 CSV_CONFIDENCE_THRESHOLD = 0.30
 RAG_CONFIDENCE_THRESHOLD = 0.30
 
+# future refernce-Add emails here with keywords that will trigger them
+CONTACT_EMAILS = {
+    'hr': {
+        'email': 'request.lekki@greenspringsschool.com',
+        'subject': 'HR Request',
+        'keywords': ['hr', 'human resources', 'request', 'staff request', 'personnel']
+    }
+}
+
+def should_add_contact_link(message, response):
+    message_lower = message.lower()
+    response_lower = response.lower() if response else ""
+    
+    triggers = ['more information', 'contact', 'email', 'request', 'how do i', 'reach out']
+    
+    for trigger in triggers:
+        if trigger in message_lower or trigger in response_lower:
+            return True
+    return False
+
+def get_relevant_contact(message):
+    message_lower = message.lower()
+    
+    for contact_type, contact_info in CONTACT_EMAILS.items():
+        for keyword in contact_info['keywords']:
+            if keyword in message_lower:
+                return contact_type, contact_info
+    
+    return 'hr', CONTACT_EMAILS['hr']
+
+def add_contact_link(response, message):
+    if not should_add_contact_link(message, response):
+        return response
+    
+    contact_type, contact_info = get_relevant_contact(message)
+    email = contact_info['email']
+    subject = contact_info['subject']
+    
+    # Create Gmail web link only
+    gmail_link = f"https://mail.google.com/mail/?view=cm&fs=1&to={email}&su={quote(subject)}"
+    
+    # Simple contact section without border
+    contact_section = f'''
+
+<div style="margin-top: 10px;">
+    <a href="{gmail_link}" target="_blank" style="color: #1a73e8; text-decoration: none; font-weight: 500;">📧 Open in Gmail</a>
+</div>'''
+    
+    return response + contact_section
+
 def is_greeting(message):
-    """Check if message is a greeting"""
     greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 
                  'good evening', 'greetings', 'howdy', 'sup', 'what\'s up']
     msg_lower = message.lower().strip()
     return any(greeting in msg_lower for greeting in greetings) and len(msg_lower.split()) <= 3
 
 def get_groq_response(message, context=None, is_greeting=False):
-    """Get response from Groq API as Greeny G - SHORT AND DIRECT"""
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -52,11 +91,10 @@ def get_groq_response(message, context=None, is_greeting=False):
     
     current_date = datetime.now().strftime("%B %Y")
     
-    # Build system prompt based on context type
     if is_greeting:
         system_content = """You are Greeny G, a friendly support assistant for Greensprings School.
-Respond to greetings warmly but briefly (1 sentence max).
-Example: "Hi! I'm Greeny G. How can I help you today?" """
+Respond to greetings warmly and briefly introduce yourself as Greeny G. Keep it to 1-2 sentences.
+Example: "Hello! I'm Greeny G, your Greensprings School support assistant. How can I help you today?" """
         
     elif context:
         system_content = f"""You are Greeny G, a support assistant for Greensprings School.
@@ -65,27 +103,12 @@ Current date: {current_date}
 HANDBOOK CONTEXT:
 {context}
 
-CRITICAL INSTRUCTIONS:
-- Answer ONLY what was asked - nothing extra
-- Keep responses under 50 words
-- Be direct and concise
-- Use simple, natural language
-- Do NOT add extra information not asked for
-- Do NOT mention the handbook or sources
-- Just answer the specific question asked
-
-Example:
-Question: "What time does school start?"
-Good: "School starts at 8:00 AM."
-Bad: "According to the handbook, school starts at 8:00 AM. This ensures students have adequate time to prepare for their classes and participate in morning activities."
-
-ANSWER ONLY WHAT IS ASKED."""
+Answer ONLY what was asked in under 50 words. Be direct and concise."""
     else:
         system_content = f"""You are Greeny G, a support assistant for Greensprings School.
 Current date: {current_date}
 
-Answer questions in 1-2 sentences maximum (under 50 words).
-Be direct and helpful. Answer ONLY what was asked."""
+Answer in 1-2 sentences maximum (under 50 words). Be direct and helpful."""
     
     payload = {
         "model": "llama-3.3-70b-versatile",
@@ -93,114 +116,63 @@ Be direct and helpful. Answer ONLY what was asked."""
             {"role": "system", "content": system_content},
             {"role": "user", "content": message}
         ],
-        "temperature": 0.3,  # Lower temperature for more focused responses
-        "max_tokens": 100,  # Reduced from 250/300
+        "temperature": 0.3,
+        "max_tokens": 100,
         "top_p": 0.8
     }
     
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        
         if response.status_code == 200:
-            result = response.json()
-            answer = result['choices'][0]['message']['content'].strip()
-            return answer
-        else:
-            print(f" Groq error: {response.status_code}")
-            return None
-            
-    except Exception as e:
-        print(f" Groq error: {e}")
+            return response.json()['choices'][0]['message']['content'].strip()
+        return None
+    except:
         return None
 
 def is_weak_response(response):
-    """Check if response is weak/unhelpful"""
     if not response or len(response.strip()) < 10:
         return True
     
-    weak_phrases = [
-        'i do not understand', 'i don\'t understand', 'i don\'t know',
-        'not sure', 'i can\'t help', 'unclear', 'i\'m not trained'
-    ]
+    weak_phrases = ['i do not understand', 'i don\'t understand', 'i don\'t know',
+                    'not sure', 'i can\'t help', 'unclear']
     
-    response_lower = response.lower()
-    return any(phrase in response_lower for phrase in weak_phrases)
+    return any(phrase in response.lower() for phrase in weak_phrases)
 
 def get_smart_response(user_message):
-    """
-    Flow: Greetings → CSV → Handbook → Groq AI → Default
-    """
+    base_response = None
     
-    print(f"\n{'='*70}")
-    print(f" USER: {user_message}")
-    print(f"{'='*70}")
-    
-    #greetings check
     if is_greeting(user_message):
-        print("\n Detected greeting - using Greeny G")
-        greeting_response = get_groq_response(user_message, is_greeting=True)
-        if greeting_response:
-            print(" Greeting handled by Greeny G")
-            return greeting_response
+        base_response = get_groq_response(user_message, is_greeting=True)
     
-   #check csv file
-    try:
-        result = get_response(user_message)
-        
-        if isinstance(result, tuple):
-            csv_response, csv_confidence = result
-            print(f"   Confidence: {csv_confidence:.2%}")
-            
-            if csv_response and csv_confidence >= CSV_CONFIDENCE_THRESHOLD and not is_weak_response(csv_response):
-                print(f" CSV HIGH CONFIDENCE ({csv_confidence:.2%}) - USING")
-                return csv_response
-            else:
-                print(f"  CSV confidence too low or weak response: {csv_confidence:.2%}")
+    if not base_response:
+        try:
+            result = get_response(user_message)
+            if isinstance(result, tuple):
+                csv_response, csv_confidence = result
+                if csv_response and csv_confidence >= CSV_CONFIDENCE_THRESHOLD and not is_weak_response(csv_response):
+                    base_response = csv_response
+        except:
+            pass
     
-    except Exception as e:
-        print(f" CSV Error: {e}")
-   #check handbook
-    print("\n STEP 3: Checking Handbook (RAG)...")
-    handbook_context = None
-    handbook_pages = []
+    if not base_response:
+        try:
+            handbook_context, rag_confidence, handbook_pages = get_rag_context(user_message)
+            if handbook_context and len(handbook_context.strip()) > 10:
+                groq_response = get_groq_response(user_message, context=handbook_context)
+                if groq_response and not is_weak_response(groq_response):
+                    base_response = groq_response
+        except:
+            pass
     
-    try:
-        handbook_context, rag_confidence, handbook_pages = get_rag_context(user_message)
-        print(f"   Context length: {len(handbook_context) if handbook_context else 0} chars")
-        print(f"   Confidence: {rag_confidence:.2%}")
-        print(f"   Pages: {handbook_pages}")
-        print(f"   Threshold: {RAG_CONFIDENCE_THRESHOLD:.2%}")
-        
-        # If we have ANY handbook context, use it with Greeny G
-        if handbook_context and len(handbook_context.strip()) > 10:
-            print(f"Found handbook content - using Greeny G (concise mode)")
-            groq_response = get_groq_response(user_message, context=handbook_context)
-            
-            if groq_response and not is_weak_response(groq_response):
-                print(" SUCCESS - Greeny G with Handbook (concise)")
-                return groq_response
-        else:
-            print(f" No relevant handbook content found")
+    if not base_response:
+        groq_response = get_groq_response(user_message)
+        if groq_response and not is_weak_response(groq_response):
+            base_response = groq_response
     
-    except Exception as e:
-        print(f" RAG Error: {e}")
-        import traceback
-        traceback.print_exc()
+    if not base_response:
+        base_response = "I'm sorry, I couldn't find a specific answer. Please contact Greensprings School support."
     
-   #groq fallback
-    
-    print("\n STEP 4: Using Greeny G fallback (General Knowledge)...")
-    groq_response = get_groq_response(user_message)
-    
-    if groq_response and not is_weak_response(groq_response):
-        print(" SUCCESS - Greeny G (General Knowledge)")
-        return groq_response
-    
-    print(" All systems failed - returning default response")
-    return ("I'm sorry, I couldn't find a specific answer to your question. "
-            "Please try rephrasing or contact Greensprings School support for assistance.")
-
-#Routes
+    return add_contact_link(base_response, user_message)
 
 @app.route("/", methods=["GET"])
 def index_get():
@@ -208,7 +180,6 @@ def index_get():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Main chat endpoint"""
     try:
         data = request.get_json(silent=True) or {}
         user_id = data.get("user_id", "guest")
@@ -217,12 +188,8 @@ def chat():
         if not user_message:
             return jsonify({"reply": "Please enter a message."})
         
-        print(f"\n Received from {user_id}: {user_message}")
-        
-        # Get smart response
         bot_response = get_smart_response(user_message)
         
-        # Save to database
         conn = sqlite3.connect('chat_history.db')
         cursor = conn.cursor()
         cursor.execute('''
@@ -231,17 +198,14 @@ def chat():
         ''', (user_id, user_message, bot_response))
         conn.commit()
         conn.close()
-        print(f" Saved for {user_id}")
         
         return jsonify({"reply": bot_response})
         
     except Exception as e:
-        print(f" Error: {e}")
-        return jsonify({"reply": "Sorry, I'm experiencing technical difficulties. Please try again."})
+        return jsonify({"reply": "Sorry, I'm experiencing technical difficulties."})
 
 @app.route("/chat/<user_id>", methods=["GET"])
 def get_history(user_id):
-    """Get chat history for a user"""
     try:
         conn = sqlite3.connect('chat_history.db')
         cursor = conn.cursor()
@@ -255,24 +219,14 @@ def get_history(user_id):
         rows = cursor.fetchall()
         conn.close()
         
-        history = [
-            {
-                "message": row[0],
-                "response": row[1],
-                "timestamp": row[2]
-            }
-            for row in rows
-        ]
-        
+        history = [{"message": row[0], "response": row[1], "timestamp": row[2]} for row in rows]
         return jsonify({"history": history})
         
-    except Exception as e:
-        print(f" Error: {e}")
+    except:
         return jsonify({"error": "Could not fetch history"})
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    """Alternative chat endpoint"""
     try:
         data = request.get_json()
         text = data.get("message", "").strip()
@@ -283,82 +237,58 @@ def predict():
         response = get_smart_response(text)
         return jsonify({"answer": response})
         
-    except Exception as e:
-        print(f" Error: {e}")
+    except:
         return jsonify({"answer": "Sorry, I'm experiencing technical difficulties."})
 
-#testing endpoints
 @app.route("/test-groq", methods=["GET"])
 def test_groq():
-    """Test Groq API"""
     test_response = get_groq_response("What year is it now?")
-    if test_response:
-        return f" Greeny G working! Response: {test_response}"
-    else:
-        return " Greeny G is not working"
+    return f"Groq: {test_response if test_response else 'Not working'}"
 
 @app.route("/test-csv")
 def test_csv():
-    """Test CSV"""
     test_response = get_response("student login")
     return f"CSV: {test_response}"
 
 @app.route("/test-rag")
 def test_rag():
-    """Test RAG with concise responses"""
     test_question = "Can PE staff wear their sportswear throughout the day?"
     context, confidence, pages = get_rag_context(test_question)
     
     if context:
         concise_response = get_groq_response(test_question, context=context)
-        return f""" RAG with Concise Responses working!
-Test: {test_question}
-Confidence: {confidence:.2%}
-Pages: {pages}
-
-Original Context (first 300 chars):
-{context[:300]}...
-
-Concise Response:
-{concise_response}"""
-    else:
-        return f"  RAG found nothing for: {test_question}"
+        return f"RAG working. Confidence: {confidence:.2%}, Response: {concise_response}"
+    return "RAG found nothing"
 
 @app.route("/test-all")
 def test_all():
-    """Test all systems"""
     results = []
     
-    # Test CSV
     try:
-        csv_test = get_response("test")
-        results.append(" CSV: Working")
-    except Exception as e:
-        results.append(f" CSV: Failed - {e}")
+        get_response("test")
+        results.append("CSV: Working")
+    except:
+        results.append("CSV: Failed")
     
-    # Test RAG
     try:
         context, conf, pages = get_rag_context("test")
-        results.append(f"RAG: Working (confidence: {conf:.2%})")
-    except Exception as e:
-        results.append(f" RAG: Failed - {e}")
+        results.append(f"RAG: Working ({conf:.2%})")
+    except:
+        results.append("RAG: Failed")
     
-    # Test Greeny G (Groq)
     try:
         groq_test = get_groq_response("test")
-        if groq_test:
-            results.append(" Greeny G (Groq): Working with Concise Responses")
-        else:
-            results.append(" Greeny G: No response")
-    except Exception as e:
-        results.append(f" Greeny G: Failed - {e}")
+        results.append("Groq: Working" if groq_test else "Groq: No response")
+    except:
+        results.append("Groq: Failed")
+    
+    try:
+        test_response = get_smart_response("How do I contact HR?")
+        results.append("Contact Links: Working" if 'mailto:' in test_response else "Contact Links: Not triggered")
+    except:
+        results.append("Contact Links: Failed")
     
     return "<br>".join(results)
 
 if __name__ == "__main__":
-    print("\n" + "="*70)
-    print("  GREENY G CHATBOT HAS STARTED ")
-    print("="*70)
-    print("="*70 + "\n")
-    
     app.run(port=5000, debug=True)

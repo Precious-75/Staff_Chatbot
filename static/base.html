@@ -43,6 +43,16 @@
 
     <script>
         $SCRIPT_ROOT = {{ request.script_root|tojson }};
+        // In your base.html chat display function
+function displayMessage(message, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'bot' ? 'bot-message' : 'user-message';
+    
+    // USE innerHTML instead of textContent to allow clickable links
+    messageDiv.innerHTML = message;  // ← CRITICAL CHANGE
+    
+    chatContainer.appendChild(messageDiv);
+}
     </script>
     <script type="text/javascript" src="{{ url_for('static', filename='app.js') }}"></script>
 

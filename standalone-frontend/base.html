@@ -38,7 +38,18 @@
     </div>
 </div>
 
-    <script src="./app.js"></script>
+    <script src="./app.js">
+  
+function displayMessage(message, sender) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'bot' ? 'bot-message' : 'user-message';
+    
+    // USE innerHTML instead of textContent to allow clickable links
+    messageDiv.innerHTML = message;  // ← CRITICAL CHANGE
+    
+    chatContainer.appendChild(messageDiv);
+}
+    </script>
 
 </body>
 </html>

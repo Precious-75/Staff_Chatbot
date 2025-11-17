@@ -28,6 +28,7 @@ class Chatbox {
         })
     }
 
+
     // Add this new method to display initial greeting
     addInitialGreeting(chatbox) {
         let greetingMsg = { 

@@ -198,15 +198,26 @@ body {
     background: #3d7f3f;
 }
 
-/* MESSAGES - Fixed version */
+/* MESSAGES - SCROLLBARS REMOVED */
 .chatbox__messages {
     margin-top: auto;
     display: flex;
-    overflow-y: scroll;
-    flex-direction: column; /* Changed from column-reverse */
+    overflow-y: auto; /* Changed from scroll to auto */
+    flex-direction: column;
     padding: 0 20px;
     scroll-behavior: smooth;
-    height: 300px; /* Ensure it takes available height */
+    height: 300px;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.chatbox__messages::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.chatbox__messages {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
 /* Replace your message positioning styles with these: */
