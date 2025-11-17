@@ -27,6 +27,9 @@ if os.path.exists(HANDBOOK_PDF_PATH):
 CSV_CONFIDENCE_THRESHOLD = 0.30
 RAG_CONFIDENCE_THRESHOLD = 0.30
 
+# Add your support ticket URL here
+SUPPORT_TICKET_URL = "https://support.greenspringsschool.com/"  # Replace with actual URL
+
 # future refernce-Add emails here with keywords that will trigger them
 CONTACT_EMAILS = {
     'hr': {
@@ -92,9 +95,13 @@ def get_groq_response(message, context=None, is_greeting=False):
     current_date = datetime.now().strftime("%B %Y")
     
     if is_greeting:
-        system_content = """You are Greeny G, a friendly support assistant for Greensprings School.
+        system_content = f"""You are Greeny G, a friendly support assistant for Greensprings School.
 Respond to greetings warmly and briefly introduce yourself as Greeny G. Keep it to 1-2 sentences.
-Example: "Hello! I'm Greeny G, your Greensprings School support assistant. How can I help you today?" """
+Then add this exact HTML on a new line:
+<div style="margin-top: 10px; padding: 8px; background-color: #f0f7ff; border-radius: 4px;">
+    <span style="font-size: 14px;">Need more help? </span>
+    <a href="{SUPPORT_TICKET_URL}" target="_blank" style="color: #1a73e8; text-decoration: none; font-weight: 500;"> - To raise a Ticket for Assistance</a>
+</div>"""
         
     elif context:
         system_content = f"""You are Greeny G, a support assistant for Greensprings School.
@@ -117,7 +124,7 @@ Answer in 1-2 sentences maximum (under 50 words). Be direct and helpful."""
             {"role": "user", "content": message}
         ],
         "temperature": 0.3,
-        "max_tokens": 100,
+        "max_tokens": 150,
         "top_p": 0.8
     }
     
